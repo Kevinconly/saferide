@@ -39,21 +39,35 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
 model User {
-  id           String   @id @default(uuid())
-  phone        String   @unique
-  email        String?  @unique
-  name         String?
-  role         Role     @default(PASSENGER)
-  isVerified   Boolean  @default(false)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  deletedAt    DateTime?
-  driver       Driver?
-  refreshTokens RefreshToken[]
-  devices      Device[]
-  rides        Ride[]   @relation("PassengerRides")
-  payments     Payment[]
+  id                 String   @id @default(uuid())
+  phone              String   @unique
+  email              String?  @unique
+  name               String?
+  role               Role     @default(PASSENGER)
+  status             UserStatus @default(ACTIVE)
+  passwordHash       String?
+  isVerified         Boolean  @default(false)
+  emailVerifiedAt    DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+  driver             Driver?
+  refreshTokens      RefreshToken[]
+  devices            Device[]
+  subscriptions      NotificationSubscription[]
+  notifications      Notification[]
+  rides              Ride[]   @relation("PassengerRides")
+  payments           Payment[]
+  disputes           Dispute[] @relation("DisputePassenger")
+  ratingsGiven       Rating[] @relation("RatingsGiven")
+  ratingsReceived    Rating[] @relation("RatingsReceived")
+  auditLogs          AuditLog[]
 }
 
 model Driver {
@@ -64,35 +78,45 @@ model Driver {
   vehicleModel String?
   plateNumber  String?
   rating       Float?   @default(5.0)
-  status       String?  @default("PENDING")
+  status       String   @default("PENDING")
   isVerified   Boolean  @default(false)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   deletedAt    DateTime?
   rides        Ride[]   @relation("DriverRides")
   payouts      DriverPayout[]
+  documents    DriverDocument[]
+  disputes     Dispute[] @relation("DisputeDriver")
+  ratings      Rating[] @relation("RatingsForDriver")
 }
 
 model Ride {
   id            String    @id @default(uuid())
   passengerId   String
   passenger     User      @relation(fields: [passengerId], references: [id], name: "PassengerRides")
-  driverId      String?   
+  driverId      String?
   driver        Driver?   @relation(fields: [driverId], references: [id], name: "DriverRides")
   pickupLat     Float
   pickupLng     Float
+  pickupLabel   String?
   dropoffLat    Float
   dropoffLng    Float
+  dropoffLabel  String?
+  distanceKm    Float?
   fareCents     Int
   currency      String    @default("RWF")
   state         RideState @default(REQUESTED)
   offerId       String?
+  cancelledBy   String?
+  cancelReason  String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   cancelledAt   DateTime?
   completedAt   DateTime?
   events        RideEvent[]
   payment       Payment?
+  dispute       Dispute?
+  rating        Rating?
 }
 
 model RideEvent {
@@ -115,8 +139,10 @@ model Payment {
   currency           String        @default("RWF")
   provider           String
   providerReference  String?       @unique
+  idempotencyKey     String?
   status             PaymentStatus @default(PENDING)
   metadata           Json?
+  refundReason       String?
   createdAt          DateTime      @default(now())
   processedAt        DateTime?
 }
@@ -125,7 +151,7 @@ model RefreshToken {
   id         String   @id @default(uuid())
   userId     String
   user       User     @relation(fields: [userId], references: [id])
-  tokenHash  String
+  tokenHash  String   @unique
   revoked    Boolean  @default(false)
   createdAt  DateTime @default(now())
   expiresAt  DateTime
@@ -142,15 +168,46 @@ model Device {
   createdAt   DateTime @default(now())
 }
 
+model NotificationSubscription {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id])
+  endpoint    String   @unique
+  p256dh      String
+  auth        String
+  userAgent   String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  type      String
+  title     String
+  body      String
+  payload   Json?
+  priority  String   @default("MEDIUM")
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
 model Outbox {
-  id           String   @id @default(cuid())
+  id            String    @id @default(cuid())
   aggregateType String
-  aggregateId  String
-  eventType    String
-  payload      Json
-  deliveredAt  DateTime?
-  attempts     Int      @default(0)
-  createdAt    DateTime @default(now())
+  aggregateId   String
+  eventType     String
+  payload       Json
+  deliveredAt   DateTime?
+  attempts      Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@index([deliveredAt, attempts])
 }
 
 model DriverPayout {
@@ -164,4 +221,62 @@ model DriverPayout {
   netAmount     Int
   status        String   @default("PENDING")
   createdAt     DateTime @default(now())
+}
+
+model DriverDocument {
+  id        String   @id @default(uuid())
+  driverId  String
+  driver    Driver   @relation(fields: [driverId], references: [id])
+  type      String
+  url       String
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+}
+
+model Dispute {
+  id            String   @id @default(uuid())
+  rideId        String   @unique
+  ride          Ride     @relation(fields: [rideId], references: [id])
+  passengerId   String
+  passenger     User     @relation(fields: [passengerId], references: [id], name: "DisputePassenger")
+  driverId      String?
+  driver        Driver?  @relation(fields: [driverId], references: [id], name: "DisputeDriver")
+  reason        String
+  status        String   @default("OPEN")
+  resolution    String?
+  resolvedById  String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Rating {
+  id        String   @id @default(uuid())
+  rideId    String   @unique
+  ride      Ride     @relation(fields: [rideId], references: [id])
+  raterId   String
+  rater     User     @relation(fields: [raterId], references: [id], name: "RatingsGiven")
+  rateeId   String
+  ratee     User     @relation(fields: [rateeId], references: [id], name: "RatingsReceived")
+  driverId  String?
+  driver    Driver?  @relation(fields: [driverId], references: [id], name: "RatingsForDriver")
+  score     Int
+  comment   String?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorRole  String?
+  action     String
+  entityType String?
+  entityId   String?
+  metadata   Json?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
 }
