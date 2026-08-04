@@ -42,3 +42,4 @@ apps/saferide-backend/prisma/migrations/dev/
 # Terraform
 *.tfstate
 *.tfstate.*
+node_modules

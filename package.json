@@ -8,7 +8,12 @@
   ],
   "scripts": {
     "dev:backend": "npm run start:dev --workspace=saferide-backend",
+    "dev:web": "npm run dev --workspace=saferide-web",
     "dev:mobile": "npm run start --workspace=saferide-mobile",
-    "dev:web": "npm run dev --workspace=saferide-web"
+    "dev:driver-mobile": "npm run start --workspace=saferide-driver-mobile",
+    "test": "npm --workspace=saferide-backend run test:unit",
+    "build:backend": "npm --workspace=saferide-backend run build",
+    "build:web": "npm --workspace=saferide-web run build",
+    "typecheck": "npm --workspace=saferide-backend run typecheck"
   }
 }
