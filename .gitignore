@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*service-account*.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Tests / coverage
+coverage/
+playwright-report/
+test-results/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Expo / React Native
+.expo/
+expo-env.d.ts
+
+# Prisma
+apps/saferide-backend/prisma/migrations/dev/
+
+# Terraform
+*.tfstate
+*.tfstate.*

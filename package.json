@@ -1,0 +1,14 @@
+{
+  "name": "saferide-kigali",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:backend": "npm run start:dev --workspace=saferide-backend",
+    "dev:mobile": "npm run start --workspace=saferide-mobile",
+    "dev:web": "npm run dev --workspace=saferide-web"
+  }
+}

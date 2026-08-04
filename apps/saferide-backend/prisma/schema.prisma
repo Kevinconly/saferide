@@ -1,0 +1,167 @@
+// Prisma schema for SafeRide Kigali - MVP core entities
+// Use `DATABASE_URL` env var to connect
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PASSENGER
+  DRIVER
+  ADMIN
+  SUPER_ADMIN
+}
+
+enum RideState {
+  REQUESTED
+  MATCHING
+  OFFERED
+  RESERVED
+  EN_ROUTE_TO_PICKUP
+  ARRIVED_AT_PICKUP
+  PICKED_UP
+  EN_ROUTE_TO_DROPOFF
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model User {
+  id           String   @id @default(uuid())
+  phone        String   @unique
+  email        String?  @unique
+  name         String?
+  role         Role     @default(PASSENGER)
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+  driver       Driver?
+  refreshTokens RefreshToken[]
+  devices      Device[]
+  rides        Ride[]   @relation("PassengerRides")
+  payments     Payment[]
+}
+
+model Driver {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  user         User     @relation(fields: [userId], references: [id])
+  vehicleMake  String?
+  vehicleModel String?
+  plateNumber  String?
+  rating       Float?   @default(5.0)
+  status       String?  @default("PENDING")
+  isVerified   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+  rides        Ride[]   @relation("DriverRides")
+  payouts      DriverPayout[]
+}
+
+model Ride {
+  id            String    @id @default(uuid())
+  passengerId   String
+  passenger     User      @relation(fields: [passengerId], references: [id], name: "PassengerRides")
+  driverId      String?   
+  driver        Driver?   @relation(fields: [driverId], references: [id], name: "DriverRides")
+  pickupLat     Float
+  pickupLng     Float
+  dropoffLat    Float
+  dropoffLng    Float
+  fareCents     Int
+  currency      String    @default("RWF")
+  state         RideState @default(REQUESTED)
+  offerId       String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  cancelledAt   DateTime?
+  completedAt   DateTime?
+  events        RideEvent[]
+  payment       Payment?
+}
+
+model RideEvent {
+  id        String   @id @default(uuid())
+  rideId    String
+  ride      Ride     @relation(fields: [rideId], references: [id])
+  actor     String?
+  type      String
+  payload   Json?
+  createdAt DateTime @default(now())
+}
+
+model Payment {
+  id                 String        @id @default(uuid())
+  rideId             String?       @unique
+  ride               Ride?         @relation(fields: [rideId], references: [id])
+  userId             String?
+  user               User?         @relation(fields: [userId], references: [id])
+  amountCents        Int
+  currency           String        @default("RWF")
+  provider           String
+  providerReference  String?       @unique
+  status             PaymentStatus @default(PENDING)
+  metadata           Json?
+  createdAt          DateTime      @default(now())
+  processedAt        DateTime?
+}
+
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  tokenHash  String
+  revoked    Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+}
+
+model Device {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  platform    String
+  tokenHash   String
+  isActive    Boolean  @default(true)
+  lastSeenAt  DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model Outbox {
+  id           String   @id @default(cuid())
+  aggregateType String
+  aggregateId  String
+  eventType    String
+  payload      Json
+  deliveredAt  DateTime?
+  attempts     Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model DriverPayout {
+  id            String   @id @default(uuid())
+  driverId      String
+  driver        Driver   @relation(fields: [driverId], references: [id])
+  periodStart   DateTime
+  periodEnd     DateTime
+  grossAmount   Int
+  commission    Int
+  netAmount     Int
+  status        String   @default("PENDING")
+  createdAt     DateTime @default(now())
+}
