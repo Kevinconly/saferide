@@ -11,6 +11,8 @@ This document defines the authentication and authorization architecture for Safe
 - Define secure auth interfaces for mobile and web clients.
 - Document operational, security, and testing requirements for auth.
 
+> NOTE: For current development/demo builds, OTP flows are temporarily disabled. Signup and login should use password-based credentials. Role-based access control (RBAC) and token-based session handling remain active and must be used as specified.
+
 ## 4.2 Authentication Requirements
 
 ### Functional requirements

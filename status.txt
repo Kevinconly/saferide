@@ -1,0 +1,64 @@
+﻿ M .env.example
+ M .github/workflows/tests.yml
+ M apps/saferide-backend/.env.example
+ M apps/saferide-backend/jest.integration.config.js
+ M apps/saferide-backend/jest.unit.config.js
+ M apps/saferide-backend/package.json
+ D apps/saferide-backend/prisma/migrations/20260728000000_init/migration.sql
+ M apps/saferide-backend/prisma/schema.prisma
+ M apps/saferide-backend/src/app.module.ts
+ M apps/saferide-backend/src/common/common.module.ts
+ M apps/saferide-backend/src/common/exceptions/app-error.ts
+ M apps/saferide-backend/src/common/filters/all-exceptions.filter.ts
+ M apps/saferide-backend/src/common/guards/jwt-auth.guard.ts
+ M apps/saferide-backend/src/common/guards/roles.guard.ts
+ M apps/saferide-backend/src/common/redis.service.ts
+ M apps/saferide-backend/src/config/config.service.ts
+ M apps/saferide-backend/src/health/health.controller.ts
+ M apps/saferide-backend/src/main.ts
+ M apps/saferide-backend/src/modules/auth/auth.controller.ts
+ M apps/saferide-backend/src/modules/auth/auth.module.ts
+ M apps/saferide-backend/src/modules/auth/auth.service.ts
+ M apps/saferide-backend/src/modules/auth/dto/auth.dto.ts
+ M apps/saferide-backend/src/modules/auth/token.service.ts
+ M apps/saferide-backend/src/modules/users/users.service.ts
+ M apps/saferide-backend/test/unit/example.spec.ts
+ M apps/saferide-backend/tsconfig.build.json
+ D apps/saferide-driver-mobile/App.tsx
+ D apps/saferide-driver-mobile/app.json
+ D apps/saferide-driver-mobile/index.ts
+ D apps/saferide-driver-mobile/package.json
+ D apps/saferide-driver-mobile/tsconfig.json
+ D apps/saferide-mobile/.gitignore
+ D apps/saferide-mobile/App.tsx
+ D apps/saferide-mobile/LICENSE
+ D apps/saferide-mobile/app.json
+ D apps/saferide-mobile/assets/android-icon-background.png
+ D apps/saferide-mobile/assets/android-icon-foreground.png
+ D apps/saferide-mobile/assets/android-icon-monochrome.png
+ D apps/saferide-mobile/assets/favicon.png
+ D apps/saferide-mobile/assets/icon.png
+ D apps/saferide-mobile/assets/splash-icon.png
+ D apps/saferide-mobile/index.ts
+ D apps/saferide-mobile/package.json
+ D apps/saferide-mobile/tsconfig.json
+ M docker-compose.dev.yml
+ M docs/PHASE_4_AUTHENTICATION.md
+ M package-lock.json
+ M package.json
+ M scripts/init-scripts.sh
+ M scripts/socket-harness.js
+?? README.md
+?? apps/saferide-backend/prisma/seed.mjs
+?? apps/saferide-backend/src/common/guards/verified-user.guard.ts
+?? apps/saferide-backend/src/modules/admin/
+?? apps/saferide-backend/src/modules/auth/auth-seed.service.ts
+?? apps/saferide-backend/src/modules/notifications/
+?? apps/saferide-backend/src/modules/outbox/
+?? apps/saferide-backend/src/modules/payments/
+?? apps/saferide-backend/src/modules/rides/
+?? apps/saferide-backend/src/modules/websocket/
+?? apps/saferide-backend/test/unit/app-di.spec.ts
+?? apps/saferide-backend/test/unit/ride-utils.spec.ts
+?? apps/saferide-web/
+?? status.txt

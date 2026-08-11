@@ -23,6 +23,7 @@ export class TokenService {
     role: string
     phone?: string | null
     email?: string | null
+    tokenVersion?: number
   }): Promise<string> {
     return this.jwt.signAsync(
       {
@@ -30,12 +31,20 @@ export class TokenService {
         role: user.role,
         phone: user.phone ?? undefined,
         email: user.email ?? undefined,
+        tokenVersion: user.tokenVersion,
       },
       {
         secret: this.config.get('JWT_ACCESS_TOKEN_SECRET'),
         expiresIn: this.config.get('JWT_ACCESS_TOKEN_EXPIRES_IN') as any,
       },
     )
+  }
+
+  async revokeUserRefreshTokens(userId: string): Promise<void> {
+    await this.prisma.refreshToken.updateMany({
+      where: { userId, revoked: false },
+      data: { revoked: true },
+    })
   }
 
   private generateRefreshToken(): { token: string; hash: string } {

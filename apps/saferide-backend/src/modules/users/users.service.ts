@@ -20,7 +20,7 @@ export class UsersService {
     if (!existing) throw Errors.notFound('User not found')
 
     if (data.email && data.email !== existing.email) {
-      const taken = await this.prisma.user.findUnique({ where: { email: data.email } })
+      const taken = await this.prisma.user.findFirst({ where: { email: data.email } })
       if (taken && taken.id !== userId) {
         throw Errors.conflict('Email already in use')
       }

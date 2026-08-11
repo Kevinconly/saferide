@@ -1,16 +1,19 @@
 import { Controller, Get } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { RedisService } from '../common/redis.service'
+import { Public } from '../common/decorators/public.decorator'
 
 @Controller('health')
 export class HealthController {
   constructor(private prisma: PrismaService, private redis: RedisService) {}
 
+  @Public()
   @Get('live')
   liveness() {
     return { status: 'ok' }
   }
 
+  @Public()
   @Get('ready')
   async readiness() {
     const dbOk = await this.checkDb()
@@ -21,8 +24,8 @@ export class HealthController {
 
   private async checkDb(): Promise<boolean> {
     try {
-      // simple lightweight query
-      await this.prisma.$queryRaw`SELECT 1`
+      // lightweight MongoDB ping
+      await this.prisma.$runCommandRaw({ ping: 1 })
       return true
     } catch (err) {
       return false

@@ -10,6 +10,12 @@ import { CommonModule } from './common/common.module'
 import { AuditModule } from './modules/audit/audit.module'
 import { AuthModule } from './modules/auth/auth.module'
 import { UsersModule } from './modules/users/users.module'
+import { RidesModule } from './modules/rides/rides.module'
+import { WebsocketModule } from './modules/websocket/websocket.module'
+import { OutboxModule } from './modules/outbox/outbox.module'
+import { NotificationsModule } from './modules/notifications/notifications.module'
+import { PaymentsModule } from './modules/payments/payments.module'
+import { AdminModule } from './modules/admin/admin.module'
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard'
 import { RolesGuard } from './common/guards/roles.guard'
 
@@ -30,6 +36,12 @@ import { RolesGuard } from './common/guards/roles.guard'
     AuditModule,
     AuthModule,
     UsersModule,
+    RidesModule,
+    WebsocketModule,
+    OutboxModule,
+    NotificationsModule,
+    PaymentsModule,
+    AdminModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: JwtAuthGuard },

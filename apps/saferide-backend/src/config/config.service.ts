@@ -5,7 +5,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.string().default('3000'),
   DATABASE_URL: z.string().min(1),
-  REDIS_URL: z.string().min(1),
+  REDIS_URL: z.string().optional().default(''),
   FRONTEND_ORIGIN: z.string().optional(),
   CORS_ORIGINS: z.string().optional(),
 
@@ -30,6 +30,10 @@ const envSchema = z.object({
   ADMIN_URL: z.string().default('http://localhost:3001/admin'),
 
   SMS_MOCK: z.string().default('true'),
+
+  SANDBOX_WEBHOOK_SECRET: z.string().optional(),
+  PAYMENT_POLL_INTERVAL_MS: z.coerce.number().default(3000),
+  PAYMENT_AUTO_CONFIRM_MS: z.coerce.number().default(5000),
 })
 
 export type AppConfig = z.infer<typeof envSchema>

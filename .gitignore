@@ -15,6 +15,7 @@ out/
 *.pem
 *.key
 *service-account*.json
+API.text
 
 # Logs
 logs/

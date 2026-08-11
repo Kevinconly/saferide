@@ -18,6 +18,7 @@ import {
   LoginDto,
   LogoutDto,
   RefreshTokenDto,
+  RegisterDto,
   RequestOtpDto,
   VerifyOtpDto,
 } from './dto/auth.dto'
@@ -50,11 +51,27 @@ export class AuthController {
   }
 
   @Public()
+  @Post('signup')
+  @HttpCode(HttpStatus.CREATED)
+  async signup(@Body() dto: RegisterDto, @Req() req: Request) {
+    return this.auth.signup({
+      phone: dto.phone,
+      password: dto.password,
+      username: dto.username,
+      email: dto.email,
+      name: dto.name,
+      role: dto.role,
+      ip: req.ip ?? null,
+      userAgent: req.headers['user-agent'] ?? null,
+    })
+  }
+
+  @Public()
   @Post('login')
   @HttpCode(HttpStatus.OK)
   async login(@Body() dto: LoginDto, @Req() req: Request) {
     return this.auth.login({
-      phone: dto.phone,
+      identifier: dto.identifier,
       password: dto.password,
       ip: req.ip ?? null,
       userAgent: req.headers['user-agent'] ?? null,
@@ -76,7 +93,7 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(@Body() dto: LogoutDto) {
-    await this.auth.logout(dto.refreshToken, '')
+    await this.auth.logout(dto.refreshToken)
     return { success: true }
   }
 
