@@ -6,8 +6,11 @@ import axios, {
 } from "axios";
 
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3500/api/v1";
-export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "http://localhost:3500";
+  process.env.NEXT_PUBLIC_API_URL ??
+  "https://saferideapi-production.up.railway.app/api/v1";
+export const WS_URL =
+  process.env.NEXT_PUBLIC_WS_URL ??
+  "wss://saferideapi-production.up.railway.app";
 
 const ACCESS_KEY = "sr_access_token";
 const REFRESH_KEY = "sr_refresh_token";

@@ -1,4 +1,4 @@
-const CACHE = "saferide-shell-v2";
+const CACHE = "saferide-shell-v3";
 const SHELL = ["/", "/auth/login", "/offline"];
 
 self.addEventListener("install", (event) => {
@@ -26,6 +26,11 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
+  const url = new URL(request.url);
+
+  // Never intercept Next.js build/dev assets. Caching webpack chunks and
+  // hot-reloaded modules serves stale copies that break HMR and hydration.
+  if (url.pathname.startsWith("/_next/")) return;
 
   if (request.mode === "navigate") {
     event.respondWith(
