@@ -1,5 +1,5 @@
-const CACHE = "saferide-shell-v1";
-const SHELL = ["/", "/app", "/auth/login", "/offline"];
+const CACHE = "saferide-shell-v2";
+const SHELL = ["/", "/auth/login", "/offline"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(

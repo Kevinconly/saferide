@@ -60,7 +60,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="border-t border-gray-200 p-3">
           <Link
-            href="/app"
+            href="/"
             className="mb-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-100"
           >
             <ArrowLeft className="h-4 w-4" /> Passenger app

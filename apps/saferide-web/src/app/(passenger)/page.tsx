@@ -87,7 +87,7 @@ export default function BookRidePage() {
         dropoffLng: dropoffLoc.lng,
         dropoffLabel: dropoffLoc.label,
       }),
-    onSuccess: (ride) => router.push(`/app/rides/${ride.id}`),
+    onSuccess: (ride) => router.push(`/rides/${ride.id}`),
   });
 
   async function onSubmit(e: FormEvent) {
@@ -124,7 +124,7 @@ export default function BookRidePage() {
               <div className="flex items-center gap-2 pt-2">
                 <Button
                   variant="outline"
-                  onClick={() => router.push(`/app/rides/${currentRide.id}`)}
+                  onClick={() => router.push(`/rides/${currentRide.id}`)}
                 >
                   View ride
                 </Button>

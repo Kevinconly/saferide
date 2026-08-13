@@ -28,9 +28,7 @@ export default function LoginPage() {
     if (loading) return;
     if (user) {
       router.replace(
-        user.role === "ADMIN" || user.role === "SUPER_ADMIN"
-          ? "/admin"
-          : "/app",
+        user.role === "ADMIN" || user.role === "SUPER_ADMIN" ? "/admin" : "/",
       );
     }
   }, [user, loading, router]);
@@ -90,7 +88,7 @@ export default function LoginPage() {
                   placeholder="••••••••"
                   required
                   autoComplete="current-password"
-                  minLength={3}
+                  minLength={5}
                 />
               </div>
             </div>

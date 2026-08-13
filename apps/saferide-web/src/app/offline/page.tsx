@@ -1,6 +1,6 @@
-import { Car } from 'lucide-react'
-import { Button } from '@/components/ui'
-import Link from 'next/link'
+import { Car } from "lucide-react";
+import { Button } from "@/components/ui";
+import Link from "next/link";
 
 export default function OfflinePage() {
   return (
@@ -8,13 +8,14 @@ export default function OfflinePage() {
       <Car className="h-12 w-12 text-brand-600" />
       <h1 className="mt-4 text-xl font-bold text-gray-900">You're offline</h1>
       <p className="mt-2 text-sm text-gray-500">
-        Check your connection and try again. Your ride request will resume once you're back online.
+        Check your connection and try again. Your ride request will resume once
+        you're back online.
       </p>
       <div className="mt-6">
-        <Link href="/app">
+        <Link href="/">
           <Button variant="outline">Try again</Button>
         </Link>
       </div>
     </div>
-  )
+  );
 }

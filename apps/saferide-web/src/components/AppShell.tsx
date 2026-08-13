@@ -17,11 +17,11 @@ import { useAuth } from "@/lib/auth";
 import { formatPhone } from "@/lib/format";
 
 const nav = [
-  { href: "/app", label: "Book a ride", icon: MapPin },
-  { href: "/app/rides", label: "Ride history", icon: History },
-  { href: "/app/payments", label: "Payments", icon: Wallet },
-  { href: "/app/notifications", label: "Notifications", icon: Bell },
-  { href: "/app/profile", label: "Profile", icon: User },
+  { href: "/", label: "Book a ride", icon: MapPin },
+  { href: "/rides", label: "Ride history", icon: History },
+  { href: "/payments", label: "Payments", icon: Wallet },
+  { href: "/notifications", label: "Notifications", icon: Bell },
+  { href: "/profile", label: "Profile", icon: User },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

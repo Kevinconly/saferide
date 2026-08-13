@@ -1,26 +1,35 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { RequireAuth } from '@/components/RequireAuth'
-import { AdminShell } from '@/components/AdminShell'
-import { useAuth } from '@/lib/auth'
+import type { ReactNode } from "react";
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { RequireAuth } from "@/components/RequireAuth";
+import { AdminShell } from "@/components/AdminShell";
+import { useAuth } from "@/lib/auth";
 
 function AdminGuard({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth()
-  const router = useRouter()
+  const { user, loading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    if (!loading && user && user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
-      router.replace('/app')
+    if (
+      !loading &&
+      user &&
+      user.role !== "ADMIN" &&
+      user.role !== "SUPER_ADMIN"
+    ) {
+      router.replace("/");
     }
-  }, [loading, user, router])
+  }, [loading, user, router]);
 
-  if (loading || !user || (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN')) {
-    return null
+  if (
+    loading ||
+    !user ||
+    (user.role !== "ADMIN" && user.role !== "SUPER_ADMIN")
+  ) {
+    return null;
   }
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
@@ -30,5 +39,5 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         <AdminShell>{children}</AdminShell>
       </AdminGuard>
     </RequireAuth>
-  )
+  );
 }
