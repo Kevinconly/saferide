@@ -34,6 +34,8 @@ const statusTone: Record<string, "gray" | "green" | "amber" | "red"> = {
   REFUNDED: "gray",
 };
 
+const SANDBOX_MODE = process.env.NEXT_PUBLIC_SANDBOX === "true";
+
 export default function PaymentsPage() {
   const { data, isLoading } = useQuery({
     queryKey: ["payments"],
@@ -85,7 +87,7 @@ export default function PaymentsPage() {
                     <Badge tone={statusTone[p.status] ?? "gray"}>
                       {p.status}
                     </Badge>
-                    {p.status === "PROCESSING" && (
+                    {SANDBOX_MODE && p.status === "PROCESSING" && (
                       <Button
                         variant="outline"
                         loading={simulate.isPending}
@@ -94,7 +96,7 @@ export default function PaymentsPage() {
                         Simulate success
                       </Button>
                     )}
-                    {p.status === "SUCCESS" && (
+                    {SANDBOX_MODE && p.status === "SUCCESS" && (
                       <Button
                         variant="ghost"
                         loading={refund.isPending}

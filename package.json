@@ -11,16 +11,12 @@
     "start": "npm run start:web",
     "build": "npm run build:web",
     "lint": "npm run lint:web",
-    "dev:backend": "npm run start:dev --workspace=saferide-backend",
     "dev:web": "npm run dev --workspace=saferide-web",
-    "dev:mobile": "npm run start --workspace=saferide-mobile",
-    "dev:driver-mobile": "npm run start --workspace=saferide-driver-mobile",
-    "test": "npm --workspace=saferide-backend run test:unit",
-    "build:backend": "npm --workspace=saferide-backend run build",
+    "test": "npm run lint:web && npm run typecheck",
     "build:web": "npm --workspace=saferide-web run build",
     "start:web": "npm run start --workspace=saferide-web",
     "lint:web": "npm run lint --workspace=saferide-web",
-    "typecheck": "npm --workspace=saferide-backend run typecheck"
+    "typecheck": "npm run typecheck --workspace=saferide-web"
   },
   "devDependencies": {
     "@playwright/test": "^1.49.0",

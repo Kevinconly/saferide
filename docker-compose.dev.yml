@@ -12,8 +12,8 @@ services:
       - "6379:6379"
   api:
     build:
-      context: .
-      dockerfile: apps/saferide-backend/Dockerfile
+      context: ../saferide-backend
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
