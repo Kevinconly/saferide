@@ -26,6 +26,7 @@ export interface WebUser {
   name?: string | null;
   role: string;
   isVerified: boolean;
+  isPhoneVerified?: boolean;
   status: string;
   driver?: {
     id: string;
@@ -34,11 +35,17 @@ export interface WebUser {
   } | null;
 }
 
+export interface OtpRequestResult {
+  sent: boolean;
+  mode?: "code" | "auto";
+  devCode?: string;
+}
+
 interface AuthContextValue {
   user: WebUser | null;
   loading: boolean;
   isAdmin: boolean;
-  requestOtp: (phone: string) => Promise<{ devCode?: string }>;
+  requestOtp: (phone: string) => Promise<OtpRequestResult>;
   login: (identifier: string, password: string) => Promise<WebUser>;
   signUp: (
     phone: string,
@@ -48,6 +55,7 @@ interface AuthContextValue {
     name?: string,
     role?: "PASSENGER" | "DRIVER",
   ) => Promise<WebUser>;
+  verifyOtp: (phone: string, code?: string) => Promise<WebUser>;
   logout: () => Promise<void>;
 }
 
@@ -86,15 +94,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const requestOtp = useCallback(async (phone: string) => {
-    // OTP flows are temporarily disabled for development/demo. Return a no-op response.
-    // Authentication for login/signup requires password-based credentials. Role-based access remains enforced.
-    try {
-      // keep a light-touch call for compatibility, but do not rely on OTP behavior
-      await Promise.resolve();
-      return { sent: false } as { sent: boolean; devCode?: string };
-    } catch {
-      return { sent: false } as { sent: boolean; devCode?: string };
-    }
+    const res = await api.post<OtpRequestResult>("/auth/request-otp", {
+      phone,
+    });
+    return res;
   }, []);
 
   const login = useCallback(async (identifier: string, password: string) => {
@@ -140,6 +143,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const verifyOtp = useCallback(async (phone: string, code?: string) => {
+    const res = await api.post<{
+      user: WebUser;
+      tokens: { accessToken: string; refreshToken: string };
+    }>("/auth/verify-otp", { phone, code });
+    setTokens(res.tokens.accessToken, res.tokens.refreshToken);
+    setStoredUser(res.user);
+    setUser(res.user);
+    return res.user;
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -148,9 +162,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestOtp,
       login,
       signUp,
+      verifyOtp,
       logout,
     }),
-    [user, loading, requestOtp, login, signUp, logout],
+    [user, loading, requestOtp, login, signUp, verifyOtp, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
