@@ -66,7 +66,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <ArrowLeft className="h-4 w-4" /> Passenger app
           </Link>
           <div className="flex items-center justify-between px-3 py-1 text-xs text-gray-500">
-            <span>{user?.name ?? user?.phone}</span>
+            <span>{user?.name ?? user?.phone ?? user?.email ?? "Account"}</span>
             <button
               onClick={() => void logout()}
               className="rounded p-1 hover:bg-gray-100"

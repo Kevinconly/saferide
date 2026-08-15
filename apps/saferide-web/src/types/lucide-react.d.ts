@@ -11,12 +11,16 @@ declare module "lucide-react" {
   export const ArrowLeft: ComponentType<LucideProps>;
   export const Bell: ComponentType<LucideProps>;
   export const Car: ComponentType<LucideProps>;
+  export const Crosshair: ComponentType<LucideProps>;
   export const History: ComponentType<LucideProps>;
   export const Icon: ComponentType<LucideProps>;
   export const KeyRound: ComponentType<LucideProps>;
   export const LayoutDashboard: ComponentType<LucideProps>;
+  export const Locate: ComponentType<LucideProps>;
+  export const LocateFixed: ComponentType<LucideProps>;
   export const LogOut: ComponentType<LucideProps>;
   export const MapPin: ComponentType<LucideProps>;
+  export const MapPinPlus: ComponentType<LucideProps>;
   export const Navigation: ComponentType<LucideProps>;
   export const Phone: ComponentType<LucideProps>;
   export const Shield: ComponentType<LucideProps>;

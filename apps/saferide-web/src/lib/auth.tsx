@@ -21,12 +21,13 @@ import {
 export interface WebUser {
   id: string;
   username?: string | null;
-  phone: string;
+  phone: string | null;
   email?: string | null;
   name?: string | null;
   role: string;
   isVerified: boolean;
   isPhoneVerified?: boolean;
+  isEmailVerified?: boolean;
   status: string;
   driver?: {
     id: string;
@@ -41,20 +42,36 @@ export interface OtpRequestResult {
   devCode?: string;
 }
 
+export interface EmailOtpVerifyResult {
+  success: boolean;
+  user: Pick<WebUser, "id" | "email"> & { isEmailVerified: boolean };
+  accessToken: string;
+  refreshToken: string;
+}
+
+export interface UsernameCheckResult {
+  available: boolean;
+  normalized?: string;
+  suggestions?: string[];
+}
+
 interface AuthContextValue {
   user: WebUser | null;
   loading: boolean;
   isAdmin: boolean;
   requestOtp: (phone: string) => Promise<OtpRequestResult>;
+  requestEmailOtp: (email: string) => Promise<{ success: boolean; message: string }>;
+  verifyEmailOtp: (email: string, otp: string) => Promise<WebUser>;
+  checkUsername: (username: string) => Promise<UsernameCheckResult>;
   login: (identifier: string, password: string) => Promise<WebUser>;
-  signUp: (
-    phone: string,
-    password: string,
-    username?: string,
-    email?: string,
-    name?: string,
-    role?: "PASSENGER" | "DRIVER",
-  ) => Promise<WebUser>;
+  signUp: (data: {
+    email: string;
+    password: string;
+    phone?: string;
+    username?: string;
+    name?: string;
+    role?: "PASSENGER" | "DRIVER";
+  }) => Promise<WebUser>;
   verifyOtp: (phone: string, code?: string) => Promise<WebUser>;
   logout: () => Promise<void>;
 }
@@ -100,6 +117,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return res;
   }, []);
 
+  const requestEmailOtp = useCallback(
+    async (email: string) => {
+      return api.post<{ success: boolean; message: string }>(
+        "/auth/email/request-otp",
+        { email },
+      );
+    },
+    [],
+  );
+
+  const checkUsername = useCallback(async (username: string) => {
+    return api.get<UsernameCheckResult>("/auth/username-available", {
+      params: { username },
+    });
+  }, []);
+
+  const verifyEmailOtp = useCallback(
+    async (email: string, otp: string) => {
+      const res = await api.post<EmailOtpVerifyResult>(
+        "/auth/email/verify-otp",
+        { email, otp },
+      );
+      setTokens(res.accessToken, res.refreshToken);
+      const user: WebUser = {
+        id: res.user.id,
+        phone: null,
+        email: res.user.email,
+        isVerified: true,
+        isEmailVerified: true,
+        status: "ACTIVE",
+        role: "PASSENGER",
+      };
+      const previous = getStoredUser<WebUser>();
+      const merged = previous ? { ...previous, ...user } : user;
+      setStoredUser(merged);
+      setUser(merged);
+      return merged;
+    },
+    [],
+  );
+
   const login = useCallback(async (identifier: string, password: string) => {
     const res = await api.post<{
       user: WebUser;
@@ -112,18 +170,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (
-      phone: string,
-      password: string,
-      username?: string,
-      email?: string,
-      name?: string,
-      role?: "PASSENGER" | "DRIVER",
-    ) => {
+    async (data: {
+      email: string;
+      password: string;
+      phone?: string;
+      username?: string;
+      name?: string;
+      role?: "PASSENGER" | "DRIVER";
+    }) => {
       const res = await api.post<{
         user: WebUser;
         tokens: { accessToken: string; refreshToken: string };
-      }>("/auth/signup", { phone, password, username, email, name, role });
+      }>("/auth/signup", data);
       setTokens(res.tokens.accessToken, res.tokens.refreshToken);
       setStoredUser(res.user);
       setUser(res.user);
@@ -160,12 +218,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       isAdmin: user?.role === "ADMIN" || user?.role === "SUPER_ADMIN",
       requestOtp,
+      requestEmailOtp,
+      verifyEmailOtp,
+      checkUsername,
       login,
       signUp,
       verifyOtp,
       logout,
     }),
-    [user, loading, requestOtp, login, signUp, verifyOtp, logout],
+    [
+      user,
+      loading,
+      requestOtp,
+      requestEmailOtp,
+      verifyEmailOtp,
+      checkUsername,
+      login,
+      signUp,
+      verifyOtp,
+      logout,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

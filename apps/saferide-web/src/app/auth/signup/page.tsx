@@ -1,17 +1,19 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ArrowRight,
   Car,
-  CheckCircle2,
-  KeyRound,
-  Phone,
+  Check,
+  Loader2,
+  Mail,
   ShieldCheck,
+  Sparkles,
   User,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import {
@@ -23,73 +25,56 @@ import {
   Label,
 } from "@/components/ui";
 import { isApiError } from "@/lib/api";
+import { EmailOtpVerification } from "@/components/EmailOtpVerification";
 
-const RW_PHONE_RE = /^(?:\+250|00250|250|0)?7\d{8}$/;
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
+const USERNAME_RE = /^[a-z0-9_]{3,20}$/;
 
-function normalizePhone(raw: string): string {
-  const phone = raw.replace(/[\s-]/g, "");
-  if (phone.startsWith("+")) return phone;
-  if (phone.startsWith("00")) return `+${phone.slice(2)}`;
-  if (phone.startsWith("0")) return `+250${phone.slice(1)}`;
-  if (phone.startsWith("7")) return `+250${phone}`;
-  return `+${phone}`;
-}
-
-function isValidRwPhone(raw: string): boolean {
-  return RW_PHONE_RE.test(raw.replace(/[\s-]/g, ""));
-}
-
-const STEPS = ["Account", "Security", "Verify phone"];
+type UsernameStatus =
+  | { state: "idle" | "checking" | "error"; message?: string }
+  | { state: "available"; message?: string }
+  | { state: "taken"; message?: string; suggestions?: string[] };
 
 export default function SignupPage() {
-  const { signUp, requestOtp, verifyOtp } = useAuth();
+  const { signUp, checkUsername } = useAuth();
   const router = useRouter();
 
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
+  const [step, setStep] = useState<number>(1);
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [role, setRole] = useState<"PASSENGER" | "DRIVER">("PASSENGER");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-
-  const [otpMode, setOtpMode] = useState<"code" | "auto" | null>(null);
-  const [devCode, setDevCode] = useState<string | undefined>(undefined);
-  const [otpCode, setOtpCode] = useState("");
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>({
+    state: "idle",
+  });
 
-  const normalizedPhone = normalizePhone(phone);
+  const usernameTimer = useRef<number | null>(null);
 
-  function validateStep1(): string | null {
-    if (!phone.trim()) return "Phone number is required";
-    if (!isValidRwPhone(phone))
-      return "Enter a Rwandan phone number, e.g. 0785222261 or +250785222261";
-    if (email.trim() && !EMAIL_RE.test(email.trim()))
-      return "Enter a valid email address";
+  useEffect(() => {
+    return () => {
+      if (usernameTimer.current) window.clearTimeout(usernameTimer.current);
+    };
+  }, []);
+
+  function validateEmail(value: string): string | null {
+    const target = value.trim();
+    if (!target) return "Enter your email address";
+    if (!EMAIL_RE.test(target)) return "Enter a valid email address";
     return null;
   }
 
-  function validateStep2(): string | null {
-    if (password.trim().length < 6)
-      return "Password must be at least 6 characters";
-    if (password.trim() !== confirm.trim())
-      return "Passwords do not match";
+  function validatePassword(value: string): string | null {
+    if (value.length < 6) return "Password must be at least 6 characters";
     return null;
   }
 
-  async function sendOtp() {
-    const res = await requestOtp(phone.trim());
-    setOtpMode(res.mode ?? (res.devCode ? "code" : "auto"));
-    setDevCode(res.devCode);
-  }
-
-  async function onStep1Submit(e: FormEvent) {
+  function onEmailSubmit(e: FormEvent) {
     e.preventDefault();
-    const v = validateStep1();
+    const v = validateEmail(email);
     if (v) {
       setError(v);
       return;
@@ -98,26 +83,104 @@ export default function SignupPage() {
     setStep(2);
   }
 
-  async function onStep2Submit(e: FormEvent) {
+  function onPasswordSubmit(e: FormEvent) {
     e.preventDefault();
-    const v = validateStep2();
+    const v = validatePassword(password);
     if (v) {
       setError(v);
       return;
     }
     setError("");
+    setStep(3);
+  }
+
+  async function checkUsernameNow(raw: string) {
+    const value = raw.trim().toLowerCase();
+    if (!value) {
+      setUsernameStatus({ state: "idle" });
+      return;
+    }
+    if (!USERNAME_RE.test(value)) {
+      setUsernameStatus({
+        state: "error",
+        message:
+          value.length < 3
+            ? "Username must be at least 3 characters"
+            : "Use 3–20 lowercase letters, numbers, or underscores",
+      });
+      return;
+    }
+    setUsernameStatus({ state: "checking" });
+    try {
+      const res = await checkUsername(value);
+      if (res.available) {
+        setUsernameStatus({ state: "available", message: "Username available" });
+      } else {
+        setUsernameStatus({
+          state: "taken",
+          message: "That username is taken",
+          suggestions: res.suggestions,
+        });
+      }
+    } catch {
+      setUsernameStatus({
+        state: "error",
+        message: "Could not check username. Try again.",
+      });
+    }
+  }
+
+  function onUsernameChange(value: string) {
+    setUsername(value);
+    setError("");
+    if (usernameTimer.current) window.clearTimeout(usernameTimer.current);
+    if (!value.trim()) {
+      setUsernameStatus({ state: "idle" });
+      return;
+    }
+    setUsernameStatus({ state: "checking" });
+    usernameTimer.current = window.setTimeout(
+      () => void checkUsernameNow(value),
+      350,
+    );
+  }
+
+  function pickSuggestion(suggestion: string) {
+    setUsername(suggestion);
+    void checkUsernameNow(suggestion);
+  }
+
+  async function onProfileSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!name.trim()) {
+      setError("Enter your full name");
+      return;
+    }
+    const target = username.trim().toLowerCase();
+    if (!USERNAME_RE.test(target)) {
+      setError("Choose a valid username (3–20 lowercase letters, numbers, or underscores)");
+      return;
+    }
+    if (usernameStatus.state === "taken") {
+      setError("That username is already taken — try one of the suggestions");
+      return;
+    }
+    if (usernameStatus.state === "checking" || usernameStatus.state === "error") {
+      setError("Confirm your username is available first");
+      return;
+    }
+
+    setError("");
     setBusy(true);
     try {
-      await signUp(
-        phone.trim(),
-        password.trim(),
-        username.trim() || undefined,
-        email.trim() || undefined,
-        name.trim() || undefined,
+      await signUp({
+        email: email.trim().toLowerCase(),
+        password,
+        username: target,
+        name: name.trim(),
         role,
-      );
-      await sendOtp();
-      setStep(3);
+      });
+      setStep(4);
     } catch (err) {
       setError(isApiError(err) ? err.message : "Unable to create account");
     } finally {
@@ -125,46 +188,7 @@ export default function SignupPage() {
     }
   }
 
-  async function onVerify(e: FormEvent) {
-    e.preventDefault();
-    if (otpMode === "code" && !/^\d{6}$/.test(otpCode.trim())) {
-      setError("Enter the 6-digit code sent to your phone");
-      return;
-    }
-    setError("");
-    setBusy(true);
-    try {
-      if (otpMode === "auto") {
-        try {
-          await verifyOtp(phone.trim(), undefined);
-        } catch (err) {
-          // Auto mode must never block signup (e.g. old backend / no SMS).
-          console.error("OTP auto-verify skipped", err);
-        }
-      } else {
-        await verifyOtp(phone.trim(), otpCode.trim());
-      }
-      router.replace("/app");
-    } catch (err) {
-      setError(
-        isApiError(err) ? err.message : "Verification failed. Try again.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function onResend() {
-    setError("");
-    setBusy(true);
-    try {
-      await sendOtp();
-    } catch (err) {
-      setError(isApiError(err) ? err.message : "Unable to resend code");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const steps = ["Email", "Password", "Profile", "Verify email"];
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-700 to-brand-900 px-4">
@@ -176,12 +200,12 @@ export default function SignupPage() {
               account
             </span>
           }
-          subtitle="Register as a passenger or driver for the SafeRide MVP"
+          subtitle="Get where you're going in a few easy steps"
         />
         <CardBody>
-          <div className="mb-5 flex items-center gap-2">
-            {STEPS.map((label, i) => {
-              const n = (i + 1) as 1 | 2 | 3;
+          <div className="mb-6 flex items-center gap-2">
+            {steps.map((label, i) => {
+              const n = i + 1;
               const active = step === n;
               const done = step > n;
               return (
@@ -204,62 +228,159 @@ export default function SignupPage() {
           </div>
 
           {step === 1 && (
-            <form onSubmit={(e) => void onStep1Submit(e)} className="space-y-4">
+            <form onSubmit={onEmailSubmit} className="space-y-4">
               <div>
-                <Label>Phone number</Label>
+                <Label>Email address</Label>
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4 text-gray-400" />
+                  <Mail className="h-4 w-4 text-gray-400" />
                   <Input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="0785222261"
+                    type="email"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError("");
+                    }}
+                    placeholder="you@saferide.com"
+                    autoComplete="email"
+                    autoFocus
                     required
-                    inputMode="tel"
-                    autoComplete="tel"
                   />
                 </div>
-                {isValidRwPhone(phone) && phone.trim() && (
-                  <p className="mt-1 text-xs text-gray-500">
-                    Will be stored as {normalizedPhone}
-                  </p>
-                )}
-                {!isValidRwPhone(phone) && phone.trim() && (
+                {email.trim() && validateEmail(email) && (
                   <p className="mt-1 text-xs text-gray-400">
-                    Use 07XXXXXXXX, 7XXXXXXXX, or +2507XXXXXXXX
+                    We&apos;ll send a 6-digit code to confirm your email.
                   </p>
                 )}
               </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <Button type="submit" className="w-full">
+                Continue <ArrowRight className="h-4 w-4" />
+              </Button>
+            </form>
+          )}
+
+          {step === 2 && (
+            <form onSubmit={onPasswordSubmit} className="space-y-4">
+              <div>
+                <Label>Create a password</Label>
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    setError("");
+                  }}
+                  placeholder="At least 6 characters"
+                  autoComplete="new-password"
+                  autoFocus
+                  required
+                  minLength={6}
+                />
+                <p className="mt-1 text-xs text-gray-400">
+                  Use at least 6 characters — a mix of letters and numbers is
+                  best.
+                </p>
+              </div>
+              {error && <p className="text-sm text-red-600">{error}</p>}
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-1/3"
+                  onClick={() => setStep(1)}
+                >
+                  <ArrowLeft className="h-4 w-4" /> Back
+                </Button>
+                <Button type="submit" className="flex-1">
+                  Continue <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {step === 3 && (
+            <form onSubmit={onProfileSubmit} className="space-y-4">
               <div>
                 <Label>Full name</Label>
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-gray-400" />
                   <Input
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      setError("");
+                    }}
                     placeholder="Your name"
                     autoComplete="name"
+                    autoFocus
                   />
                 </div>
               </div>
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@saferide.com"
-                  autoComplete="email"
-                />
-              </div>
+
               <div>
                 <Label>Username</Label>
-                <Input
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="admin"
-                  autoComplete="username"
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-gray-400">
+                    @
+                  </span>
+                  <Input
+                    value={username}
+                    onChange={(e) => onUsernameChange(e.target.value)}
+                    placeholder="username"
+                    autoComplete="username"
+                    className="pl-7"
+                  />
+                  <span className="absolute inset-y-0 right-3 flex items-center">
+                    {usernameStatus.state === "checking" && (
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    )}
+                    {usernameStatus.state === "available" && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                    {usernameStatus.state === "taken" && (
+                      <X className="h-4 w-4 text-red-500" />
+                    )}
+                    {usernameStatus.state === "error" && (
+                      <X className="h-4 w-4 text-gray-400" />
+                    )}
+                  </span>
+                </div>
+                {usernameStatus.state === "available" && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
+                    <Check className="h-3 w-3" /> {usernameStatus.message}
+                  </p>
+                )}
+                {usernameStatus.state === "taken" && (
+                  <div className="mt-1">
+                    <p className="flex items-center gap-1 text-xs text-red-600">
+                      <X className="h-3 w-3" /> {usernameStatus.message}
+                    </p>
+                    {usernameStatus.suggestions &&
+                      usernameStatus.suggestions.length > 0 && (
+                        <div className="mt-1 flex flex-wrap gap-1.5">
+                          {usernameStatus.suggestions.map((s) => (
+                            <button
+                              key={s}
+                              type="button"
+                              onClick={() => pickSuggestion(s)}
+                              className="rounded-full border border-brand-200 bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700 hover:bg-brand-100"
+                            >
+                              @{s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                )}
+                {(usernameStatus.state === "error" ||
+                  usernameStatus.state === "idle") &&
+                  usernameStatus.state === "error" && (
+                    <p className="mt-1 text-xs text-gray-400">
+                      {usernameStatus.message}
+                    </p>
+                  )}
               </div>
+
               <div>
                 <Label>Account type</Label>
                 <div className="flex gap-2">
@@ -279,102 +400,8 @@ export default function SignupPage() {
                   </Button>
                 </div>
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <Button type="submit" className="w-full" loading={busy}>
-                Continue <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-          )}
-
-          {step === 2 && (
-            <form onSubmit={(e) => void onStep2Submit(e)} className="space-y-4">
-              <div>
-                <Label>Password</Label>
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-gray-400" />
-                  <Input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="At least 6 characters"
-                    required
-                    minLength={6}
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
-              <div>
-                <Label>Confirm password</Label>
-                <div className="flex items-center gap-2">
-                  <KeyRound className="h-4 w-4 text-gray-400" />
-                  <Input
-                    type="password"
-                    value={confirm}
-                    onChange={(e) => setConfirm(e.target.value)}
-                    placeholder="Repeat your password"
-                    required
-                    minLength={6}
-                    autoComplete="new-password"
-                  />
-                </div>
-              </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-1/3"
-                  onClick={() => setStep(1)}
-                >
-                  <ArrowLeft className="h-4 w-4" /> Back
-                </Button>
-                <Button type="submit" className="flex-1" loading={busy}>
-                  Continue <ArrowRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </form>
-          )}
-
-          {step === 3 && (
-            <form onSubmit={(e) => void onVerify(e)} className="space-y-4">
-              <div className="rounded-xl border border-brand-100 bg-brand-50 px-4 py-3">
-                <p className="flex items-center gap-2 text-sm font-medium text-brand-800">
-                  <Phone className="h-4 w-4" /> {normalizedPhone}
-                </p>
-              </div>
-
-              {otpMode === "auto" ? (
-                <p className="text-sm text-gray-500">
-                  We couldn&apos;t send an SMS code just yet. Tap below to
-                  finish creating your account.
-                </p>
-              ) : (
-                <div>
-                  <Label>Verification code</Label>
-                  <Input
-                    value={otpCode}
-                    onChange={(e) =>
-                      setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-                    }
-                    placeholder="123456"
-                    required
-                    inputMode="numeric"
-                    maxLength={6}
-                    autoComplete="one-time-code"
-                  />
-                  {devCode && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Demo mode code:{" "}
-                      <span className="font-mono font-semibold text-brand-700">
-                        {devCode}
-                      </span>
-                    </p>
-                  )}
-                </div>
-              )}
 
               {error && <p className="text-sm text-red-600">{error}</p>}
-
               <div className="flex gap-2">
                 <Button
                   type="button"
@@ -385,27 +412,18 @@ export default function SignupPage() {
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Button>
                 <Button type="submit" className="flex-1" loading={busy}>
-                  {otpMode === "auto" ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" /> Finish
-                    </>
-                  ) : (
-                    "Verify & create account"
-                  )}
+                  Create account
                 </Button>
               </div>
-
-              {otpMode === "code" && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void onResend()}
-                  className="w-full text-center text-sm font-semibold text-brand-700 hover:text-brand-900"
-                >
-                  Resend code
-                </button>
-              )}
             </form>
+          )}
+
+          {step === 4 && (
+            <EmailOtpVerification
+              initialEmail={email}
+              onVerified={() => router.replace("/app")}
+              onSkip={() => router.replace("/app")}
+            />
           )}
 
           <div className="mt-4 flex items-center justify-between text-sm text-gray-500">
@@ -418,9 +436,11 @@ export default function SignupPage() {
             </Link>
           </div>
 
-          <div className="mt-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-500">
-            Driver accounts are created with a pending profile that admins
-            review before they can start driving.
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-500">
+            <Sparkles className="h-4 w-4 shrink-0 text-brand-500" />
+            {role === "DRIVER"
+              ? "Driver accounts get a pending profile that admins review before you can start driving."
+              : "Create an account in under a minute — no phone number needed."}
           </div>
 
           <div className="mt-4 flex items-center gap-2 text-xs text-gray-400">

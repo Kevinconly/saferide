@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { MapPin, Navigation } from "lucide-react";
+import { Locate, LocateFixed, MapPin, Navigation } from "lucide-react";
 import { api, isApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { formatMoney } from "@/lib/format";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui";
 import { MapPreview } from "@/components/MapPreview";
 import { RideStatusBadge } from "@/components/RideStatusBadge";
+import { useGeolocation } from "@/lib/geolocation";
 
 const LOCATIONS: { label: string; lat: number; lng: number }[] = [
   { label: "City Centre (Nyarugenge)", lat: -1.9536, lng: 30.0606 },
@@ -29,6 +30,9 @@ const LOCATIONS: { label: string; lat: number; lng: number }[] = [
   { label: "Gisozi", lat: -1.9424, lng: 30.0681 },
   { label: "Kigali Intl Airport", lat: -1.9686, lng: 30.1395 },
 ];
+
+const PICKUP_GPS = "gps";
+const PICKUP_CUSTOM = "custom";
 
 interface Ride {
   id: string;
@@ -41,15 +45,55 @@ interface Ride {
   driver?: { user: { id: string; name: string | null; phone: string } } | null;
 }
 
+interface Coordinates {
+  lat: number;
+  lng: number;
+  label: string;
+}
+
+function parseCoord(value: string, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
 export default function BookRidePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [pickup, setPickup] = useState("0");
   const [dropoff, setDropoff] = useState("2");
   const [customPickup, setCustomPickup] = useState("");
+  const [manualPickupLat, setManualPickupLat] = useState("");
+  const [manualPickupLng, setManualPickupLng] = useState("");
 
-  const pickupLoc = LOCATIONS[Number(pickup)] ?? LOCATIONS[0];
+  const geolocation = useGeolocation({ enableHighAccuracy: true });
+
   const dropoffLoc = LOCATIONS[Number(dropoff)] ?? LOCATIONS[1];
+
+  let pickupLoc: Coordinates;
+  if (pickup === PICKUP_GPS && geolocation.position) {
+    pickupLoc = {
+      lat: geolocation.position.lat,
+      lng: geolocation.position.lng,
+      label: "My current location",
+    };
+  } else if (pickup === PICKUP_CUSTOM) {
+    const hasManualCoords = manualPickupLat !== "" && manualPickupLng !== "";
+    if (hasManualCoords) {
+      pickupLoc = {
+        lat: parseCoord(manualPickupLat, LOCATIONS[0].lat),
+        lng: parseCoord(manualPickupLng, LOCATIONS[0].lng),
+        label: customPickup || "Custom pickup",
+      };
+    } else {
+      pickupLoc = {
+        lat: LOCATIONS[0].lat,
+        lng: LOCATIONS[0].lng,
+        label: customPickup || "Custom pickup",
+      };
+    }
+  } else {
+    pickupLoc = LOCATIONS[Number(pickup)] ?? LOCATIONS[0];
+  }
 
   const mapCenter = {
     lat: (pickupLoc.lat + dropoffLoc.lat) / 2,
@@ -57,8 +101,8 @@ export default function BookRidePage() {
   };
 
   const mapMarkers = [
-    { lat: pickupLoc.lat, lng: pickupLoc.lng, label: "Pickup" },
-    { lat: dropoffLoc.lat, lng: dropoffLoc.lng, label: "Dropoff" },
+    { lat: pickupLoc.lat, lng: pickupLoc.lng, label: pickupLoc.label },
+    { lat: dropoffLoc.lat, lng: dropoffLoc.lng, label: dropoffLoc.label },
   ];
 
   const { data: currentRide } = useQuery({
@@ -68,7 +112,13 @@ export default function BookRidePage() {
   });
 
   const estimate = useQuery({
-    queryKey: ["fare-estimate", pickup, dropoff],
+    queryKey: [
+      "fare-estimate",
+      pickupLoc.lat,
+      pickupLoc.lng,
+      dropoffLoc.lat,
+      dropoffLoc.lng,
+    ],
     queryFn: async () =>
       api.get<{ distanceKm: number; fareCents: number; currency: string }>(
         `/rides/fare-estimate?pickupLat=${pickupLoc.lat}&pickupLng=${pickupLoc.lng}&dropoffLat=${dropoffLoc.lat}&dropoffLng=${dropoffLoc.lng}`,
@@ -81,8 +131,7 @@ export default function BookRidePage() {
       api.post<Ride>("/rides", {
         pickupLat: pickupLoc.lat,
         pickupLng: pickupLoc.lng,
-        pickupLabel:
-          pickup === "custom" ? customPickup || undefined : pickupLoc.label,
+        pickupLabel: pickupLoc.label,
         dropoffLat: dropoffLoc.lat,
         dropoffLng: dropoffLoc.lng,
         dropoffLabel: dropoffLoc.label,
@@ -147,6 +196,13 @@ export default function BookRidePage() {
     );
   }
 
+  const pickupReady =
+    (pickup !== PICKUP_GPS && pickup !== PICKUP_CUSTOM) ||
+    (pickup === PICKUP_GPS && geolocation.position !== null) ||
+    (pickup === PICKUP_CUSTOM &&
+      manualPickupLat !== "" &&
+      manualPickupLng !== "");
+
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="space-y-4">
       <div className="space-y-4">
@@ -167,15 +223,76 @@ export default function BookRidePage() {
                     {l.label}
                   </option>
                 ))}
-                <option value="custom">Custom location</option>
+                <option value={PICKUP_GPS}>Use my current location (GPS)</option>
+                <option value={PICKUP_CUSTOM}>Manual configuration</option>
               </Select>
-              {pickup === "custom" && (
-                <div className="mt-2">
+              {pickup === PICKUP_GPS && (
+                <div className="mt-2 space-y-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    loading={geolocation.loading}
+                    disabled={!geolocation.supported}
+                    onClick={geolocation.getPosition}
+                  >
+                    <LocateFixed className="h-4 w-4" />
+                    {geolocation.position
+                      ? "Refresh location"
+                      : "Detect my location"}
+                  </Button>
+                  {!geolocation.supported && (
+                    <p className="text-xs text-gray-500">
+                      Geolocation is not supported on this device.
+                    </p>
+                  )}
+                  {geolocation.position ? (
+                    <div className="flex items-center gap-2 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
+                      <Locate className="h-4 w-4" />
+                      <span>
+                        {geolocation.position.lat.toFixed(5)},{" "}
+                        {geolocation.position.lng.toFixed(5)} (±
+                        {Math.round(geolocation.position.accuracy)} m)
+                      </span>
+                    </div>
+                  ) : geolocation.error ? (
+                    <p className="text-sm text-red-600">{geolocation.error}</p>
+                  ) : null}
+                </div>
+              )}
+              {pickup === PICKUP_CUSTOM && (
+                <div className="mt-2 space-y-3">
                   <Input
                     value={customPickup}
                     onChange={(e) => setCustomPickup(e.target.value)}
-                    placeholder="Describe pickup location"
+                    placeholder="Describe pickup location (e.g. Kigali City Market)"
                   />
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Latitude</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={manualPickupLat}
+                        onChange={(e) => setManualPickupLat(e.target.value)}
+                        placeholder="-1.9536"
+                      />
+                    </div>
+                    <div>
+                      <Label>Longitude</Label>
+                      <Input
+                        type="number"
+                        step="any"
+                        value={manualPickupLng}
+                        onChange={(e) => setManualPickupLng(e.target.value)}
+                        placeholder="30.0606"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Leave latitude/longitude blank to use the default city
+                    centre coordinates.
+                  </p>
                 </div>
               )}
             </div>
@@ -190,7 +307,6 @@ export default function BookRidePage() {
                     {l.label}
                   </option>
                 ))}
-                <option value="custom">Custom location</option>
               </Select>
             </div>
             {estimate.data && pickup !== dropoff && (
@@ -216,10 +332,17 @@ export default function BookRidePage() {
               type="submit"
               className="w-full"
               loading={requestRide.isPending}
-              disabled={pickup === dropoff || user?.isVerified === false}
+              disabled={
+                !pickupReady || pickup === dropoff || user?.isVerified === false
+              }
             >
               Request ride
             </Button>
+            {pickup === PICKUP_GPS && !geolocation.position && (
+              <p className="text-xs text-gray-500">
+                Detect your location with GPS before requesting a ride.
+              </p>
+            )}
             {user?.isVerified === false && (
               <p className="text-sm text-amber-700">
                 Your account is not verified yet. Please verify your phone
