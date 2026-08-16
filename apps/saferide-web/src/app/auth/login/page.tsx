@@ -93,9 +93,19 @@ export default function LoginPage() {
               </div>
             </div>
             {error && <p className="text-sm text-red-600">{error}</p>}
-            <Button type="submit" className="w-full" loading={busy}>
-              Log in
-            </Button>
+            <div className="flex items-center justify-between">
+              <Button type="submit" className="w-full" loading={busy}>
+                Log in
+              </Button>
+            </div>
+            <div className="text-right">
+              <Link
+                href="/auth/forgot-password"
+                className="text-sm font-semibold text-brand-700 hover:text-brand-900"
+              >
+                Forgot password?
+              </Link>
+            </div>
           </form>
 
           <div className="mt-4 flex items-center justify-between text-sm text-gray-500">

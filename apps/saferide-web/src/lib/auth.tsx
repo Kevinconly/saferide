@@ -62,6 +62,8 @@ interface AuthContextValue {
   requestOtp: (phone: string) => Promise<OtpRequestResult>;
   requestEmailOtp: (email: string) => Promise<{ success: boolean; message: string }>;
   verifyEmailOtp: (email: string, otp: string) => Promise<WebUser>;
+  requestPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
+  resetPassword: (token: string, password: string) => Promise<{ success: boolean }>;
   checkUsername: (username: string) => Promise<UsernameCheckResult>;
   login: (identifier: string, password: string) => Promise<WebUser>;
   signUp: (data: {
@@ -132,6 +134,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       params: { username },
     });
   }, []);
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    return api.post<{ success: boolean; message: string }>(
+      "/auth/password/forgot",
+      { email },
+    );
+  }, []);
+
+  const resetPassword = useCallback(
+    async (token: string, password: string) => {
+      return api.post<{ success: boolean }>("/auth/password/reset", {
+        token,
+        password,
+      });
+    },
+    [],
+  );
 
   const verifyEmailOtp = useCallback(
     async (email: string, otp: string) => {
@@ -220,6 +239,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestOtp,
       requestEmailOtp,
       verifyEmailOtp,
+      requestPasswordReset,
+      resetPassword,
       checkUsername,
       login,
       signUp,
@@ -232,6 +253,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestOtp,
       requestEmailOtp,
       verifyEmailOtp,
+      requestPasswordReset,
+      resetPassword,
       checkUsername,
       login,
       signUp,
