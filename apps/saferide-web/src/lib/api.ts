@@ -5,12 +5,10 @@ import axios, {
   type InternalAxiosRequestConfig,
 } from "axios";
 
-export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ??
-  "https://saferideapi-production.up.railway.app/api/v1";
-export const WS_URL =
-  process.env.NEXT_PUBLIC_WS_URL ??
-  "wss://saferideapi-production.up.railway.app";
+// No hard-coded fallbacks: these must be provided per environment
+// (NEXT_PUBLIC_* are inlined at build time — see .env.example).
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
+export const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "";
 
 const ACCESS_KEY = "sr_access_token";
 const REFRESH_KEY = "sr_refresh_token";

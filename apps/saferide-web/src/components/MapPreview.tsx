@@ -22,11 +22,9 @@ declare global {
   }
 }
 
-// Use NEXT_PUBLIC_GOOGLE_MAPS_API_KEY from environment; fall back to demo key
-const API_KEY =
-  process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ??
-  "AIzaSyAeJrrphchoph6i9nMK0ERNDrU3P-EWaUM";
-//open for demo (This doesn't count torward any cost) any developer must use his/shes own here
+// NEXT_PUBLIC_GOOGLE_MAPS_API_KEY comes from the environment (see .env.example).
+// No hard-coded fallback key — a missing key disables previews with a clear error.
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? "";
 const SCRIPT_ID = "saferide-google-maps-script";
 
 function loadGoogleMaps(): Promise<void> {
