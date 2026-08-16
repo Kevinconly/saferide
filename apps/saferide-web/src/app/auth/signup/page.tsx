@@ -35,8 +35,13 @@ type UsernameStatus =
   | { state: "available"; message?: string }
   | { state: "taken"; message?: string; suggestions?: string[] };
 
+type EmailStatus =
+  | { state: "idle" | "checking" | "error"; message?: string }
+  | { state: "available"; message?: string }
+  | { state: "taken"; message?: string };
+
 export default function SignupPage() {
-  const { signUp, checkUsername } = useAuth();
+  const { signUp, checkUsername, checkEmailAvailable } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState<number>(1);
@@ -51,12 +56,17 @@ export default function SignupPage() {
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>({
     state: "idle",
   });
+  const [emailStatus, setEmailStatus] = useState<EmailStatus>({
+    state: "idle",
+  });
 
   const usernameTimer = useRef<number | null>(null);
+  const emailTimer = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
       if (usernameTimer.current) window.clearTimeout(usernameTimer.current);
+      if (emailTimer.current) window.clearTimeout(emailTimer.current);
     };
   }, []);
 
@@ -72,7 +82,56 @@ export default function SignupPage() {
     return null;
   }
 
-  function onEmailSubmit(e: FormEvent) {
+  async function checkEmailNow(raw: string): Promise<boolean | null> {
+    const value = raw.trim().toLowerCase();
+    if (!value) {
+      setEmailStatus({ state: "idle" });
+      return null;
+    }
+    if (!EMAIL_RE.test(value)) {
+      setEmailStatus({
+        state: "error",
+        message: "Enter a valid email address",
+      });
+      return null;
+    }
+    setEmailStatus({ state: "checking" });
+    try {
+      const res = await checkEmailAvailable(value);
+      if (res.available) {
+        setEmailStatus({ state: "available", message: "Email available" });
+        return true;
+      }
+      setEmailStatus({
+        state: "taken",
+        message: "This email is already registered",
+      });
+      return false;
+    } catch {
+      setEmailStatus({
+        state: "error",
+        message: "Could not check email. Try again.",
+      });
+      return null;
+    }
+  }
+
+  function onEmailChange(value: string) {
+    setEmail(value);
+    setError("");
+    if (emailTimer.current) window.clearTimeout(emailTimer.current);
+    if (!value.trim()) {
+      setEmailStatus({ state: "idle" });
+      return;
+    }
+    setEmailStatus({ state: "checking" });
+    emailTimer.current = window.setTimeout(
+      () => void checkEmailNow(value),
+      350,
+    );
+  }
+
+  async function onEmailSubmit(e: FormEvent) {
     e.preventDefault();
     const v = validateEmail(email);
     if (v) {
@@ -80,6 +139,16 @@ export default function SignupPage() {
       return;
     }
     setError("");
+    if (emailTimer.current) window.clearTimeout(emailTimer.current);
+    const ok = await checkEmailNow(email);
+    if (ok === false) {
+      setError("This email is already registered — sign in instead");
+      return;
+    }
+    if (ok === null) {
+      setError("Could not confirm your email is available. Try again.");
+      return;
+    }
     setStep(2);
   }
 
@@ -231,22 +300,57 @@ export default function SignupPage() {
             <form onSubmit={onEmailSubmit} className="space-y-4">
               <div>
                 <Label>Email address</Label>
-                <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4 text-gray-400" />
-                  <Input
-                    type="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      setError("");
-                    }}
-                    placeholder="you@saferide.com"
-                    autoComplete="email"
-                    autoFocus
-                    required
-                  />
+                <div className="relative">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-gray-400" />
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => onEmailChange(e.target.value)}
+                      placeholder="you@saferide.com"
+                      autoComplete="email"
+                      autoFocus
+                      required
+                      className="pr-9"
+                    />
+                  </div>
+                  <span className="absolute inset-y-0 right-2 flex items-center">
+                    {emailStatus.state === "checking" && (
+                      <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                    )}
+                    {emailStatus.state === "available" && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                    {emailStatus.state === "taken" && (
+                      <X className="h-4 w-4 text-red-500" />
+                    )}
+                    {emailStatus.state === "error" && (
+                      <X className="h-4 w-4 text-gray-400" />
+                    )}
+                  </span>
                 </div>
-                {email.trim() && validateEmail(email) && (
+                {emailStatus.state === "available" && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-green-600">
+                    <Check className="h-3 w-3" /> {emailStatus.message}
+                  </p>
+                )}
+                {emailStatus.state === "taken" && (
+                  <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+                    <X className="h-3 w-3" /> {emailStatus.message}
+                    <Link
+                      href="/auth/login"
+                      className="font-semibold text-brand-700 underline hover:text-brand-900"
+                    >
+                      Sign in instead
+                    </Link>
+                  </p>
+                )}
+                {emailStatus.state === "error" && (
+                  <p className="mt-1 text-xs text-gray-400">
+                    {emailStatus.message}
+                  </p>
+                )}
+                {emailStatus.state === "idle" && email.trim() && (
                   <p className="mt-1 text-xs text-gray-400">
                     We&apos;ll send a 6-digit code to confirm your email.
                   </p>

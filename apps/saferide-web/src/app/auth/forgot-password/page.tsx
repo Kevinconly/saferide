@@ -25,26 +25,33 @@ import { isApiError } from "@/lib/api";
 const EMAIL_RE = /^\S+@\S+\.\S+$/;
 
 export default function ForgotPasswordPage() {
-  const { requestPasswordReset } = useAuth();
+  const { requestPasswordReset, checkEmailAvailable } = useAuth();
   const router = useRouter();
 
   const [step, setStep] = useState<number>(1);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [noAccount, setNoAccount] = useState<string>("");
 
   const steps = ["Email", "Check your inbox"];
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const target = email.trim();
+    const target = email.trim().toLowerCase();
     if (!target || !EMAIL_RE.test(target)) {
       setError("Enter a valid email address");
       return;
     }
     setError("");
+    setNoAccount("");
     setBusy(true);
     try {
+      const check = await checkEmailAvailable(target);
+      if (check.available) {
+        setNoAccount(target);
+        return;
+      }
       await requestPasswordReset(target);
       setStep(2);
     } catch (err) {
@@ -106,6 +113,7 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => {
                       setEmail(e.target.value);
                       setError("");
+                      setNoAccount("");
                     }}
                     placeholder="you@saferide.com"
                     autoComplete="email"
@@ -119,7 +127,22 @@ export default function ForgotPasswordPage() {
                   </p>
                 )}
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
+              {noAccount ? (
+                <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm">
+                  <span className="text-amber-800">
+                    No account is registered with{" "}
+                    <span className="font-medium">{noAccount}</span>
+                  </span>
+                  <Link
+                    href="/auth/signup"
+                    className="shrink-0 font-semibold text-brand-700 hover:text-brand-900"
+                  >
+                    Create account
+                  </Link>
+                </div>
+              ) : (
+                error && <p className="text-sm text-red-600">{error}</p>
+              )}
               <Button type="submit" className="w-full" loading={busy}>
                 Send reset link
               </Button>
@@ -133,9 +156,9 @@ export default function ForgotPasswordPage() {
               </div>
               <p className="font-medium text-gray-900">Check your inbox</p>
               <p className="text-sm text-gray-500">
-                If an account exists for <span className="font-medium">{email.trim()}</span>,
-                a password reset link is on its way. Open it within 15 minutes
-                to choose a new password.
+                A password reset link was sent to{" "}
+                <span className="font-medium">{email.trim().toLowerCase()}</span>.
+                Open it within 15 minutes to choose a new password.
               </p>
               <Button
                 type="button"

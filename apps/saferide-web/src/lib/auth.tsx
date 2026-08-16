@@ -55,6 +55,11 @@ export interface UsernameCheckResult {
   suggestions?: string[];
 }
 
+export interface EmailCheckResult {
+  available: boolean;
+  normalized: string;
+}
+
 interface AuthContextValue {
   user: WebUser | null;
   loading: boolean;
@@ -65,6 +70,7 @@ interface AuthContextValue {
   requestPasswordReset: (email: string) => Promise<{ success: boolean; message: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean }>;
   checkUsername: (username: string) => Promise<UsernameCheckResult>;
+  checkEmailAvailable: (email: string) => Promise<EmailCheckResult>;
   login: (identifier: string, password: string) => Promise<WebUser>;
   signUp: (data: {
     email: string;
@@ -132,6 +138,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const checkUsername = useCallback(async (username: string) => {
     return api.get<UsernameCheckResult>("/auth/username-available", {
       params: { username },
+    });
+  }, []);
+
+  const checkEmailAvailable = useCallback(async (email: string) => {
+    return api.get<EmailCheckResult>("/auth/email-available", {
+      params: { email },
     });
   }, []);
 
@@ -242,6 +254,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPasswordReset,
       resetPassword,
       checkUsername,
+      checkEmailAvailable,
       login,
       signUp,
       verifyOtp,
@@ -256,6 +269,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPasswordReset,
       resetPassword,
       checkUsername,
+      checkEmailAvailable,
       login,
       signUp,
       verifyOtp,
