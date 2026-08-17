@@ -144,6 +144,39 @@ export default function BookRidePage() {
     requestRide.mutate();
   }
 
+  if (user?.role === "ADMIN" || user?.role === "SUPER_ADMIN") {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardBody className="py-12 text-center">
+            <p className="text-lg font-semibold text-gray-900">Admin Dashboard</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Admins manage the platform and do not book rides.
+            </p>
+            <Button className="mt-4" onClick={() => router.push("/admin")}>
+              Go to Admin Dashboard
+            </Button>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
+  if (user?.role === "DRIVER") {
+    return (
+      <div className="space-y-4">
+        <Card>
+          <CardBody className="py-12 text-center">
+            <p className="text-lg font-semibold text-gray-900">Driver Account</p>
+            <p className="mt-2 text-sm text-gray-500">
+              Drivers cannot book rides. You will receive ride requests from passengers.
+            </p>
+          </CardBody>
+        </Card>
+      </div>
+    );
+  }
+
   if (currentRide) {
     return (
       <div className="space-y-4">
@@ -333,7 +366,7 @@ export default function BookRidePage() {
               className="w-full"
               loading={requestRide.isPending}
               disabled={
-                !pickupReady || pickup === dropoff || user?.isVerified === false
+                !pickupReady || pickup === dropoff || user?.isEmailVerified === false
               }
             >
               Request ride
@@ -343,12 +376,11 @@ export default function BookRidePage() {
                 Detect your location with GPS before requesting a ride.
               </p>
             )}
-            {user?.isVerified === false && (
+            {user?.isEmailVerified === false && (
               <p className="text-sm text-amber-700">
-                Your account is not verified yet. Please verify your phone
-                before requesting rides.
+                Verify Email to book ride.
               </p>
-            )}{" "}
+            )}
           </CardBody>
         </Card>
 

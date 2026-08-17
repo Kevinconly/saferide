@@ -53,6 +53,7 @@ export default function SignupPage() {
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [usernameStatus, setUsernameStatus] = useState<UsernameStatus>({
     state: "idle",
   });
@@ -221,6 +222,10 @@ export default function SignupPage() {
 
   async function onProfileSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!acceptedTerms) {
+      setError("You must agree to the Terms & Conditions to create an account");
+      return;
+    }
     if (!name.trim()) {
       setError("Enter your full name");
       return;
@@ -505,6 +510,30 @@ export default function SignupPage() {
                 </div>
               </div>
 
+              <div className="mt-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={acceptedTerms}
+                    onChange={(e) => {
+                      setAcceptedTerms(e.target.checked);
+                      setError("");
+                    }}
+                    className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                  />
+                  <span className="text-sm text-gray-600">
+                    I agree to SafeRide&apos;s{" "}
+                    <a href="#" className="font-semibold text-brand-700 hover:underline">
+                      Terms &amp; Conditions
+                    </a>{" "}
+                    and{" "}
+                    <a href="#" className="font-semibold text-brand-700 hover:underline">
+                      Privacy Policy
+                    </a>
+                  </span>
+                </label>
+              </div>
+
               {error && <p className="text-sm text-red-600">{error}</p>}
               <div className="flex gap-2">
                 <Button
@@ -515,7 +544,7 @@ export default function SignupPage() {
                 >
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Button>
-                <Button type="submit" className="flex-1" loading={busy}>
+                <Button type="submit" className="flex-1" loading={busy} disabled={!acceptedTerms}>
                   Create account
                 </Button>
               </div>
@@ -526,7 +555,7 @@ export default function SignupPage() {
             <EmailOtpVerification
               initialEmail={email}
               onVerified={() => router.replace("/app")}
-              onSkip={() => router.replace("/app")}
+              onSkip={role === "DRIVER" ? undefined : () => router.replace("/app")}
             />
           )}
 

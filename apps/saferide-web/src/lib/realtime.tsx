@@ -77,6 +77,10 @@ export function RealtimeProvider({
       }
       void queryClient.invalidateQueries({ queryKey: ["rides"] });
       void queryClient.invalidateQueries({ queryKey: ["current-ride"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-stats"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-active-rides"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-rides"] });
+      void queryClient.invalidateQueries({ queryKey: ["admin-drivers"] });
     },
     [onEvent, queryClient],
   );
@@ -132,6 +136,28 @@ export function RealtimeProvider({
     s.on("ride:completed", (data) => {
       notify("success", "Ride completed", "Thanks for riding with SafeRide!");
       handleEvent("ride:completed", data);
+    });
+    s.on("ride:offer", (data) => {
+      const d = data as { passenger?: { phone?: string }; pickup?: { label?: string }; fareCents?: number };
+      notify(
+        "info",
+        "New ride offer",
+        `Passenger${d.passenger?.phone ? ` (${d.passenger.phone})` : ''} needs a ride${d.pickup?.label ? ` from ${d.pickup.label}` : ''}. Accept?`,
+      );
+      handleEvent("ride:offer", data);
+    });
+    s.on("ride:offer_cancelled", (data) => {
+      const d = data as { reason?: string };
+      notify("info", "Offer cancelled", d.reason ?? "The ride offer is no longer available.");
+      handleEvent("ride:offer_cancelled", data);
+    });
+    s.on("driver:approved", (data) => {
+      notify("success", "Driver approved", "A driver has been approved.");
+      handleEvent("driver:approved", data);
+    });
+    s.on("driver:rejected", (data) => {
+      notify("info", "Driver rejected", "A driver has been rejected.");
+      handleEvent("driver:rejected", data);
     });
   }, [notify, handleEvent]);
 
